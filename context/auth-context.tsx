@@ -4,22 +4,29 @@ import axios from 'axios';
 
 interface AuthProps {
   authState: { token: string | null; authenticated: boolean | null };
-  onLogin: (username: string, password: string) => Promise<any>;
-  onLogout: () => Promise<any>;
+  onLogin: (
+    username: string,
+    password: string
+  ) => Promise<
+    | true
+    | {
+        error: boolean;
+        msg: any;
+      }
+  >;
+  onLogout: () => Promise<void>;
   isLoading: boolean;
 }
 
 const TOKEN_KEY = 'jwt';
 export const API_URL = 'http://10.0.2.2:5050/api';
 
-const defaultAuthState = {
-  authState: { token: null, authenticated: false },
-  onLogin: async () => Promise.resolve({}),
-  onLogout: async () => Promise.resolve({}),
+const AuthContext = createContext<AuthProps>({
+  authState: { token: null, authenticated: null },
+  onLogin: async () => true,
+  onLogout: async () => {},
   isLoading: false,
-};
-
-const AuthContext = createContext<AuthProps>(defaultAuthState);
+});
 
 export const useAuth = () => {
   const { authState, onLogin, onLogout, isLoading } = useContext(AuthContext);
@@ -61,15 +68,13 @@ export const AuthProvider = ({ children }: any) => {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log(`${API_URL}/users/login`, {
-        username,
-        password,
-      });
 
       const result = await axios.post(`${API_URL}/users/login`, {
         username,
         password,
       });
+
+      if (!result.data) return { error: true, msg: result.data.error };
 
       setAuthState({
         token: result.data.token,
@@ -84,10 +89,10 @@ export const AuthProvider = ({ children }: any) => {
 
       setIsLoading(false);
 
-      return result;
+      return true;
     } catch (e) {
       setIsLoading(false);
-      return { error: true, msg: (e as any).response.data.msg };
+      return { error: true, msg: (e as any).response.data.error };
     }
   };
 
